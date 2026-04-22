@@ -2,7 +2,9 @@
 
 微信读书同步 CLI 预研项目，用来验证登录、书架探测、划线/书评抓取，以及 Markdown 导出这条链路是否可行。
 
-## 当前提供的能力
+当前实现参考了 [obsidian-weread-plugin](https://github.com/zhaohongxuan/obsidian-weread-plugin) 的相关能力，并将其中可复用的链路整理为独立的本地 CLI 与 skill 说明。
+
+## CLI 提供的能力
 
 - `login start`：申请一次登录会话，并在本地生成二维码 PNG
 - `login wait`：轮询登录结果，成功后把登录态保存到本机
@@ -13,6 +15,24 @@
 - `sync`：把选中的书籍导出为 Markdown
 - `status`：查看当前登录状态和最近一次同步结果
 - `logout`：清除本机保存的登录态
+
+## Skill 提供的能力
+
+仓库内的 skill 位于 [skills/weread-sync/SKILL.md](skills/weread-sync/SKILL.md)。
+
+这份 skill 是纯说明型文档，不包含脚本，也不新增业务逻辑。它主要为外层大模型约定一套稳定的使用流程：
+
+- 先检查登录状态，未登录时先走登录流程
+- 优先使用本地导出的 Markdown 目录回答跨书问题
+- 本地数据缺失、过旧，或用户明确要求刷新时执行 `sync`
+- 只有在“单本书实时深查”场景下才使用 `book-probe`
+- 支持外部传入 `--output-dir`，由外层模型优先使用用户指定目录
+
+换句话说：
+
+- CLI 负责执行
+- skill 负责说明如何调用 CLI
+- 外层模型负责检索策略、归纳总结与语义理解
 
 ## 开发与运行
 
