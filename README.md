@@ -1,10 +1,10 @@
 # weread-sync
 
-微信读书同步 CLI 预研项目，用来验证登录、书架探测、划线/书评抓取，以及 Markdown 导出这条链路是否可行。
+微信读书同步命令行工具预研项目，用来验证登录、书架探测、划线与书评抓取，以及 Markdown 导出这条链路是否可行。
 
-当前实现参考了 [obsidian-weread-plugin](https://github.com/zhaohongxuan/obsidian-weread-plugin) 的相关能力，并将其中可复用的链路整理为独立的本地 CLI 与 skill 说明。
+当前实现参考了 [obsidian-weread-plugin](https://github.com/zhaohongxuan/obsidian-weread-plugin) 的相关能力，并将其中可复用的链路整理为独立的本地命令行工具与 skill 说明。
 
-## CLI 提供的能力
+## 命令行工具提供的能力
 
 - `login start`：申请一次登录会话，并在本地生成二维码 PNG
 - `login wait`：轮询登录结果，成功后把登录态保存到本机
@@ -30,7 +30,7 @@
 
 换句话说：
 
-- CLI 负责执行
+- 命令行工具负责执行
 - skill 负责说明如何调用 CLI
 - 外层模型负责检索策略、归纳总结与语义理解
 
