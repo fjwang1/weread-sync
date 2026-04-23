@@ -13,6 +13,10 @@ export async function runStatus(options: StatusOptions): Promise<void> {
     outputDir: options.outputDir
   });
 
+  const syncedBookCount = syncStatus.syncState
+    ? Object.keys(syncStatus.syncState.books).length
+    : 0;
+
   const payload = {
     ok: true,
     loggedIn: Boolean(auth),
@@ -20,6 +24,7 @@ export async function runStatus(options: StatusOptions): Promise<void> {
     loginAt: auth?.loginAt ?? null,
     outputDir: syncStatus.outputDir,
     lastSyncAt: syncStatus.lastResult?.syncedAt ?? null,
+    syncedBookCount,
     lastSync: syncStatus.lastResult
   };
 
@@ -31,5 +36,6 @@ export async function runStatus(options: StatusOptions): Promise<void> {
   printText(`登录状态：${payload.loggedIn ? '已登录' : '未登录'}`);
   printText(`用户：${payload.userVid ?? ''}`);
   printText(`导出目录：${payload.outputDir}`);
+  printText(`已同步书籍：${syncedBookCount}`);
   printText(`上次同步：${payload.lastSyncAt ?? '无'}`);
 }

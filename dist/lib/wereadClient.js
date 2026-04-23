@@ -35,7 +35,10 @@ export async function requestWereadJson(path, init = {}) {
             const wereadError = json;
             const errCode = wereadError.errCode ?? wereadError.errcode;
             if (typeof errCode === 'number' && errCode < 0) {
-                throw new CliError(wereadError.errMsg ?? wereadError.errmsg ?? `WeRead returned error ${errCode}`, 'WEREAD_ERROR', json);
+                const message = wereadError.errMsg ?? wereadError.errmsg ?? `WeRead returned error ${errCode}`;
+                // WeRead uses -2010 / -2012 for invalid/expired credentials
+                const isAuthError = errCode === -2010 || errCode === -2012;
+                throw new CliError(isAuthError ? `${message}. Auth expired, please run 'login start' to re-authenticate.` : message, isAuthError ? 'AUTH_EXPIRED' : 'WEREAD_ERROR', json);
             }
         }
         return json;

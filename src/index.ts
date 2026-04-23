@@ -4,6 +4,7 @@ import { Command } from 'commander';
 
 import { runLoginStart } from './commands/loginStart.js';
 import { runLoginWait } from './commands/loginWait.js';
+import { runLoginInteractive } from './commands/loginInteractive.js';
 import { runUserInfo } from './commands/userInfo.js';
 import { runNotebooks } from './commands/notebooks.js';
 import { runBookProbe } from './commands/bookProbe.js';
@@ -11,13 +12,24 @@ import { runBooksStatus } from './commands/booksStatus.js';
 import { runSyncCommand } from './commands/sync.js';
 import { runStatus } from './commands/status.js';
 import { runLogout } from './commands/logout.js';
+import { runExportDir } from './commands/exportDir.js';
 import { handleFatalError } from './lib/output.js';
 
 const program = new Command();
 
 program.name('weread-sync').description('Independent CLI for WeRead sync').version('0.0.1');
 
-const login = program.command('login').description('Login related commands');
+const login = program
+  .command('login')
+  .description('Login to WeRead (show QR code and wait for scan)')
+  .option('--json', 'Print JSON output')
+  .option('--qr-out <path>', 'Where to save the QR png')
+  .action(async (options) => {
+    await runLoginInteractive({
+      json: options.json,
+      qrOut: options.qrOut
+    });
+  });
 
 login
   .command('start')
@@ -98,11 +110,13 @@ program
   .description('Classify books by progress and finish time')
   .option('--vid <vid>', 'webLoginVid from login result')
   .option('--skey <skey>', 'accessToken from login result')
+  .option('--limit <n>', 'Max books per category in output')
   .option('--json', 'Print JSON output')
   .action(async (options) => {
     await runBooksStatus({
       vid: options.vid,
       skey: options.skey,
+      limit: options.limit,
       json: options.json
     });
   });
@@ -140,6 +154,16 @@ program
   .action(async (options) => {
     await runStatus({
       outputDir: options.outputDir,
+      json: options.json
+    });
+  });
+
+program
+  .command('export-dir')
+  .description('Show local export directory and whether data exists')
+  .option('--json', 'Print JSON output')
+  .action(async (options) => {
+    await runExportDir({
       json: options.json
     });
   });

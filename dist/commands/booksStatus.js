@@ -23,14 +23,17 @@ export async function runBooksStatus(options) {
     const finished = results.filter((item) => item.finishTime && item.finishTime > 0);
     const reading = results.filter((item) => item.progress !== null && item.progress > 0 && item.progress < 100 && !item.finishTime);
     const unreadOrUnknown = results.filter((item) => item.progress === null && !item.finishTime);
+    const limit = options.limit ? Number(options.limit) : undefined;
+    const applyLimit = (arr) => (limit ? arr.slice(0, limit) : arr);
     const payload = {
         ok: true,
         total: results.length,
         finishedCount: finished.length,
         readingCount: reading.length,
         unreadOrUnknownCount: unreadOrUnknown.length,
-        finishedSample: finished.slice(0, 10),
-        readingSample: reading.slice(0, 10)
+        finished: applyLimit(finished),
+        reading: applyLimit(reading),
+        unreadOrUnknown: applyLimit(unreadOrUnknown)
     };
     if (options.json) {
         printJson(payload);

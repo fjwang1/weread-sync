@@ -5,6 +5,7 @@ import { fetchBookProgress, fetchNotebookList } from '../lib/wereadClient.js';
 export type BooksStatusOptions = {
   vid?: string;
   skey?: string;
+  limit?: string;
   json?: boolean;
 };
 
@@ -57,14 +58,18 @@ export async function runBooksStatus(options: BooksStatusOptions): Promise<void>
   );
   const unreadOrUnknown = results.filter((item) => item.progress === null && !item.finishTime);
 
+  const limit = options.limit ? Number(options.limit) : undefined;
+  const applyLimit = <T>(arr: T[]) => (limit ? arr.slice(0, limit) : arr);
+
   const payload = {
     ok: true,
     total: results.length,
     finishedCount: finished.length,
     readingCount: reading.length,
     unreadOrUnknownCount: unreadOrUnknown.length,
-    finishedSample: finished.slice(0, 10),
-    readingSample: reading.slice(0, 10)
+    finished: applyLimit(finished),
+    reading: applyLimit(reading),
+    unreadOrUnknown: applyLimit(unreadOrUnknown)
   };
 
   if (options.json) {

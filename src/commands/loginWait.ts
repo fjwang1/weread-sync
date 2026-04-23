@@ -17,7 +17,9 @@ export async function runLoginWait(options: LoginWaitOptions): Promise<void> {
   const timeoutMs = Number(options.timeoutMs ?? 65_000);
   const result = await waitForLogin(options.uid, options.otp, timeoutMs);
 
-  if (result.succeed && result.webLoginVid && result.accessToken) {
+  const loggedIn = Boolean(result.succeed && result.webLoginVid && result.accessToken);
+
+  if (loggedIn) {
     const webLoginVid = String(result.webLoginVid);
     const accessToken = String(result.accessToken);
     let userInfo: unknown;
@@ -27,18 +29,35 @@ export async function runLoginWait(options: LoginWaitOptions): Promise<void> {
       userInfo = undefined;
     }
 
+    const loginAt = new Date().toISOString();
     await saveStoredAuth({
       webLoginVid,
       accessToken,
       refreshToken: result.refreshToken ? String(result.refreshToken) : undefined,
-      loginAt: new Date().toISOString(),
+      loginAt,
       userInfo
     });
+
+    const payload = {
+      ok: true,
+      loggedIn: true as const,
+      vid: webLoginVid,
+      loginAt
+    };
+
+    if (options.json) {
+      printJson(payload);
+      return;
+    }
+
+    printText(`登录成功，vid: ${webLoginVid}`);
+    return;
   }
 
   const payload = {
     ok: true,
-    result
+    loggedIn: false as const,
+    reason: result.logicCode ?? 'unknown'
   };
 
   if (options.json) {
@@ -46,5 +65,5 @@ export async function runLoginWait(options: LoginWaitOptions): Promise<void> {
     return;
   }
 
-  printText(JSON.stringify(payload, null, 2));
+  printText(`登录未完成：${payload.reason}`);
 }

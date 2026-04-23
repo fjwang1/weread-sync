@@ -19,4 +19,10 @@ export async function runSyncCommand(options) {
     printText(`本次更新：${result.syncedBooks}`);
     printText(`本次跳过：${result.skippedBooks}`);
     printText(`导出目录：${result.outputDir}`);
+    if (result.updated.length > 0) {
+        printText(`更新书目：`);
+        for (const book of result.updated) {
+            printText(`  - ${book.title} (${book.status})`);
+        }
+    }
 }

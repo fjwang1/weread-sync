@@ -1,139 +1,98 @@
 # weread-sync
 
-微信读书同步命令行工具预研项目，用来验证登录、书架探测、划线与书评抓取，以及 Markdown 导出这条链路是否可行。
+微信读书同步命令行工具，用于登录、书架探测、划线与书评抓取，以及 Markdown 导出。
 
 当前实现参考了 [obsidian-weread-plugin](https://github.com/zhaohongxuan/obsidian-weread-plugin) 的相关能力，并将其中可复用的链路整理为独立的本地命令行工具与 skill 说明。
 
-## 命令行工具提供的能力
+## 安装
 
-- `login start`：申请一次登录会话，并在本地生成二维码 PNG
-- `login wait`：轮询登录结果，成功后把登录态保存到本机
-- `user-info`：读取当前账号的用户信息
-- `notebooks`：列出有笔记/划线的书籍
-- `book-probe`：抓取单本书的详情、阅读进度、划线、书评、章节信息
-- `books-status`：按 `reading` / `finished` / `other` 对书籍做阅读状态分类
-- `sync`：把选中的书籍导出为 Markdown
-- `status`：查看当前登录状态和最近一次同步结果
-- `logout`：清除本机保存的登录态
-
-## Skill 提供的能力
-
-仓库内的 skill 位于 [skills/weread-sync/SKILL.md](skills/weread-sync/SKILL.md)。
-
-这份 skill 是纯说明型文档，不包含脚本，也不新增业务逻辑。它主要为外层大模型约定一套稳定的使用流程：
-
-- 先检查登录状态，未登录时先走登录流程
-- 优先使用本地导出的 Markdown 目录回答跨书问题
-- 本地数据缺失、过旧，或用户明确要求刷新时执行 `sync`
-- 只有在“单本书实时深查”场景下才使用 `book-probe`
-- 支持外部传入 `--output-dir`，由外层模型优先使用用户指定目录
-
-换句话说：
-
-- 命令行工具负责执行
-- skill 负责说明如何调用 CLI
-- 外层模型负责检索策略、归纳总结与语义理解
-
-## 开发与运行
-
-要求：
-
-- Node.js `>= 20`
-
-安装依赖：
+要求 Node.js >= 20。
 
 ```bash
 npm install
-```
-
-开发模式运行：
-
-```bash
-npm run dev -- <command>
-```
-
-构建：
-
-```bash
 npm run build
+npm link          # 注册全局命令，之后可直接使用 weread-sync
 ```
 
-构建后运行：
+## 命令一览
+以下命令均以weread-sync为前缀。
+| 命令 | 说明 |
+|------|------|
+| `login` | 显示二维码并等待扫码登录（一步完成） |
+| `status` | 查看登录状态、同步状态和已同步书籍数量 |
+| `export-dir` | 查看本地导出目录及是否有数据 |
+| `notebooks` | 列出有笔记/划线的书籍 |
+| `books-status` | 按阅读状态分类书籍（reading/finished/other） |
+| `book-probe` | 实时拉取单本书的详情、划线、书评、章节 |
+| `sync` | 将书籍导出为本地 Markdown |
+| `logout` | 清除本机登录态 |
 
-```bash
-node dist/index.js <command>
-```
+所有命令都支持 `--json` 参数输出 JSON 格式。
 
 ## 常用流程
 
-1. 生成登录二维码
+### 登录
 
 ```bash
-npm run dev -- login start --json
+weread-sync login
 ```
 
-默认会把二维码写到当前工作目录下的 `tmp/` 中；也可以用 `--qr-out <path>` 指定输出位置。
+终端会显示二维码，用微信扫码确认即可。登录态自动保存到本机。
 
-2. 等待扫码登录完成
+### 查看状态
 
 ```bash
-npm run dev -- login wait --uid <uid> --json
+weread-sync status
 ```
 
-3. 查看当前账号和同步状态
+### 同步书籍到本地 Markdown
 
 ```bash
-npm run dev -- status
+weread-sync sync
 ```
 
-4. 导出在读和已读书籍的 Markdown
+常用选项：
 
 ```bash
-npm run dev -- sync
+weread-sync sync --book-id <bookId>          # 只同步一本书
+weread-sync sync --output-dir ./exports      # 指定导出目录
+weread-sync sync --include-statuses reading,finished,other  # 指定纳入范围
+weread-sync sync --force                     # 强制重新导出
 ```
 
-只导出单本书：
+### 查看本地导出目录
 
 ```bash
-npm run dev -- sync --book-id <bookId>
+weread-sync export-dir
 ```
 
-指定导出目录：
+有数据时输出目录路径，没有数据时提示先执行 sync。
+
+### 查看阅读状态
 
 ```bash
-npm run dev -- sync --output-dir ./exports
+weread-sync books-status
 ```
 
-强制重导：
+### 查看单本书详情
 
 ```bash
-npm run dev -- sync --force
+weread-sync book-probe --book-id <bookId>
 ```
 
 ## 本地状态与数据存放
 
-登录态和同步状态默认保存在当前用户机器的系统状态目录，不写入仓库：
+登录态和同步状态保存在系统状态目录，不写入仓库：
 
 - macOS: `~/Library/Application Support/WereadSync`
 - Linux: `${XDG_STATE_HOME:-~/.local/state}/WereadSync`
 - Windows: `%APPDATA%/WereadSync`
 
-主要文件包括：
+主要文件：
 
-- `auth/auth.json`：保存登录态
-- `state/sync-state.json`：保存每本书的同步指纹
-- `state/last-result.json`：保存最近一次同步结果
+- `auth/auth.json`：登录态
+- `state/sync-state.json`：每本书的同步指纹
+- `state/last-result.json`：最近一次同步结果
 - `exports/`：默认导出目录
 
-如果在命令里显式传入 `--output-dir`，Markdown 会导出到指定目录。
-
-## 公开仓库约定
-
-这个仓库是公开的，以下内容不应该提交：
-
-- `tmp/` 下的二维码、测试导出文件、临时截图
-- 本地依赖目录 `node_modules/`
-- `.env`、`.env.*`、`*.local` 这类个人配置文件
-- 本机生成的登录态、cookie、token 或其他账号凭据
-
-仓库当前只提交源码、构建产物和项目文档；个人数据应始终留在本机状态目录中。
+使用 `--output-dir` 可以指定其他导出目录。
