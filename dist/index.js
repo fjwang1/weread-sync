@@ -140,7 +140,8 @@ program
     .option('--host <host>', 'Host to bind, default: 127.0.0.1')
     .option('--port <port>', 'Port to bind, default: 5177')
     .option('--output-dir <path>', 'Export directory')
-    .option('--open', 'Open the demo URL in the default browser')
+    .option('--open', 'Open the demo URL in the default browser, default unless --json')
+    .option('--no-open', 'Do not open the demo URL in the default browser')
     .option('--json', 'Print JSON output')
     .action(async (options) => {
     await runDemo({

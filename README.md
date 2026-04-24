@@ -8,10 +8,35 @@
 
 要求 Node.js >= 20。
 
+### 使用 npm 全局安装
+
+```bash
+npm install -g weread-sync
+weread-sync login
+weread-sync sync
+weread-sync demo
+```
+
+### 在本仓库本地运行
+
 ```bash
 npm install
 npm run build
 npm link          # 注册全局命令，之后可直接使用 weread-sync
+```
+
+也可以不注册全局命令，直接通过 npm script 运行：
+
+```bash
+npm run start -- login
+npm run start -- sync
+npm run start -- demo
+```
+
+开发调试时可使用源码入口：
+
+```bash
+npm run dev -- demo
 ```
 
 ## 命令一览
@@ -77,12 +102,13 @@ weread-sync demo
 ```
 
 demo 会启动本地网页“微信读书评论”，优先读取本地缓存和 Markdown 导出；没有缓存时页面会展示登录二维码，扫码后自动同步并展示书籍列表。已有缓存时页面右上角会显示更新按钮。
+启动后会自动用默认浏览器打开页面；只想启动服务并打印 URL 时，可使用 `--no-open`。
 
 常用选项：
 
 ```bash
 weread-sync demo --port 5177        # 指定端口
-weread-sync demo --open             # 启动后用默认浏览器打开
+weread-sync demo --no-open          # 不自动打开浏览器
 weread-sync demo --output-dir ./exports
 ```
 

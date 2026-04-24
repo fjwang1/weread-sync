@@ -11,7 +11,7 @@ function parsePort(value) {
     }
     return port;
 }
-function openUrl(url) {
+async function openUrl(url) {
     const command = process.platform === 'darwin'
         ? 'open'
         : process.platform === 'win32'
@@ -22,11 +22,22 @@ function openUrl(url) {
         : process.platform === 'win32'
             ? ['/c', 'start', '', url]
             : [url];
-    const child = spawn(command, args, {
-        detached: true,
-        stdio: 'ignore'
+    return new Promise((resolve) => {
+        try {
+            const child = spawn(command, args, {
+                detached: true,
+                stdio: 'ignore'
+            });
+            child.once('error', () => resolve(false));
+            child.once('spawn', () => {
+                child.unref();
+                resolve(true);
+            });
+        }
+        catch {
+            resolve(false);
+        }
     });
-    child.unref();
 }
 export async function runDemo(options) {
     const handle = await startDemoServer({
@@ -46,8 +57,12 @@ export async function runDemo(options) {
         printText(`demo 已启动：${handle.url}`);
         printText('按 Ctrl+C 退出。');
     }
-    if (options.open) {
-        openUrl(handle.url);
+    const shouldOpen = options.open ?? !options.json;
+    if (shouldOpen) {
+        const opened = await openUrl(handle.url);
+        if (!opened && !options.json) {
+            printText(`无法自动打开浏览器，请手动访问：${handle.url}`);
+        }
     }
     await new Promise((resolve) => {
         const stop = async () => {

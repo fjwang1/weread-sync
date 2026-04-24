@@ -24,7 +24,7 @@ function parsePort(value?: string): number | undefined {
   return port;
 }
 
-function openUrl(url: string): void {
+async function openUrl(url: string): Promise<boolean> {
   const command =
     process.platform === 'darwin'
       ? 'open'
@@ -35,13 +35,24 @@ function openUrl(url: string): void {
     process.platform === 'darwin'
       ? [url]
       : process.platform === 'win32'
-        ? ['/c', 'start', '', url]
-        : [url];
-  const child = spawn(command, args, {
-    detached: true,
-    stdio: 'ignore'
+      ? ['/c', 'start', '', url]
+      : [url];
+
+  return new Promise((resolve) => {
+    try {
+      const child = spawn(command, args, {
+        detached: true,
+        stdio: 'ignore'
+      });
+      child.once('error', () => resolve(false));
+      child.once('spawn', () => {
+        child.unref();
+        resolve(true);
+      });
+    } catch {
+      resolve(false);
+    }
   });
-  child.unref();
 }
 
 export async function runDemo(options: DemoCommandOptions): Promise<void> {
@@ -63,8 +74,12 @@ export async function runDemo(options: DemoCommandOptions): Promise<void> {
     printText('按 Ctrl+C 退出。');
   }
 
-  if (options.open) {
-    openUrl(handle.url);
+  const shouldOpen = options.open ?? !options.json;
+  if (shouldOpen) {
+    const opened = await openUrl(handle.url);
+    if (!opened && !options.json) {
+      printText(`无法自动打开浏览器，请手动访问：${handle.url}`);
+    }
   }
 
   await new Promise<void>((resolve) => {
