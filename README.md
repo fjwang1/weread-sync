@@ -14,12 +14,6 @@ npm run build
 npm link          # 注册全局命令，之后可直接使用 weread-sync
 ```
 
-## CI 校验
-
-```bash
-npm run ci        # CI 校验命令，目前等同于 npm run build
-```
-
 ## 命令一览
 以下命令均以weread-sync为前缀。
 
