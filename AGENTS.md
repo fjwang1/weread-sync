@@ -11,6 +11,7 @@
 | `weread-sync books-status` | 按阅读状态分类书籍（reading/finished/other） |
 | `weread-sync book-probe` | 实时拉取单本书的详情、划线、书评、章节 |
 | `weread-sync sync` | 将书籍导出为本地 Markdown |
+| `weread-sync demo` | 启动本地可视化页面，浏览已同步书籍和 Markdown 笔记 |
 | `weread-sync logout` | 清除本机登录态 |
 
 # 使用流程
@@ -18,6 +19,7 @@
 1. 先执行 `weread-sync login` 扫码登录微信读书，登录态保存在本地
 2. 执行 `weread-sync sync` 拉取笔记并导出为 Markdown 文件
 3. sync 采用增量同步：通过指纹（笔记数、书评数、进度等）判断书籍是否有变化，无变化则跳过；使用 `--force` 可强制重新导出全部
+4. 如需可视化浏览本地缓存，执行 `weread-sync demo`
 
 # 本地数据目录
 
@@ -33,3 +35,4 @@
 | `state/sync-state.json` | 同步状态与指纹记录 |
 | `state/last-result.json` | 上次同步结果摘要 |
 | `exports/` | 默认 Markdown 导出目录（可通过 `--output-dir` 覆盖） |
+| `cache/demo/covers/` | demo 使用的本地封面缓存 |

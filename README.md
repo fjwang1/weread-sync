@@ -8,44 +8,20 @@
 
 要求 Node.js >= 20。
 
-发布到 npm 后可以全局安装：
-
-```bash
-npm install -g weread-sync
-weread-sync --version
-```
-
-也可以直接用 npx 运行：
-
-```bash
-npx weread-sync status
-```
-
-本地开发时：
-
 ```bash
 npm install
 npm run build
 npm link          # 注册全局命令，之后可直接使用 weread-sync
 ```
 
-## 开发与校验
+## CI 校验
 
 ```bash
-npm run build     # TypeScript 编译并复制 demo 静态资源到 dist/
 npm run ci        # CI 校验命令，目前等同于 npm run build
-npm run dev -- status
-```
-
-本地预览 demo：
-
-```bash
-npm run build
-node dist/index.js demo
 ```
 
 ## 命令一览
-以下命令均以 `weread-sync` 为前缀。
+以下命令均以weread-sync为前缀。
 
 | 命令 | 说明 |
 |------|------|
