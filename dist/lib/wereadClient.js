@@ -29,6 +29,9 @@ export async function requestWereadJson(path, init = {}) {
             }
         }
         if (!response.ok) {
+            if (response.status === 401) {
+                throw new CliError(`登录已失效，请重新登录`, 'AUTH_EXPIRED', json);
+            }
             throw new CliError(`HTTP ${response.status} ${response.statusText} for ${path}`, 'HTTP_ERROR', json);
         }
         if (json && typeof json === 'object') {

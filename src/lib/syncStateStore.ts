@@ -3,11 +3,17 @@ import { readJsonFile, writeJsonFile } from './fileStore.js';
 
 export type SyncStateBook = {
   title: string;
+  author?: string;
   fingerprint: string;
   exportFile: string;
   status: string;
   progress: number | null;
   finishTime: number | null;
+  noteCount?: number;
+  reviewCount?: number;
+  coverUrl?: string | null;
+  coverPath?: string | null;
+  coverCheckedAt?: string;
   syncedAt: string;
 };
 

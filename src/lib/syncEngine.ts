@@ -3,6 +3,7 @@ import path from 'node:path';
 
 import { getAppPaths } from './appPaths.js';
 import { resolveAuth } from './authResolver.js';
+import { cacheBookCover, extractBookCoverUrl } from './coverCache.js';
 import { ensureDir } from './fileStore.js';
 import { renderBookMarkdown } from './markdown.js';
 import { CliError } from './output.js';
@@ -10,7 +11,6 @@ import {
   fetchBookInfo,
   fetchBookmarkList,
   fetchBookProgress,
-  fetchChapterInfos,
   fetchNotebookList,
   fetchReviewList
 } from './wereadClient.js';
@@ -44,12 +44,19 @@ type SyncOptions = {
 type SyncCandidate = {
   bookId: string;
   title: string;
+  author?: string;
+  bookMeta: Record<string, unknown>;
   noteCount: number;
   reviewCount: number;
   sort: number;
   progress: number | null;
   finishTime: number | null;
   status: ReadingStatus;
+};
+
+type SyncAuth = {
+  vid: string;
+  skey: string;
 };
 
 function sanitizeFileName(fileName: string): string {
@@ -78,8 +85,58 @@ function resolveOutputDir(outputDir?: string): string {
   return getAppPaths().exportsDir;
 }
 
-async function collectCandidates(options: SyncOptions): Promise<SyncCandidate[]> {
-  const auth = await resolveAuth(options);
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' ? value as Record<string, unknown> : {};
+}
+
+function readString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value : undefined;
+}
+
+async function pathExists(filePath?: string | null): Promise<boolean> {
+  if (!filePath) {
+    return false;
+  }
+
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function cacheCoverForSkippedBook(input: {
+  auth: { vid: string; skey: string };
+  candidate: SyncCandidate;
+  previous: SyncState['books'][string];
+  checkedAt: string;
+}): Promise<SyncState['books'][string]> {
+  const sourceCoverUrl = extractBookCoverUrl(input.candidate.bookMeta) ?? input.previous.coverUrl;
+  const coverSource = sourceCoverUrl
+    ? { ...input.candidate.bookMeta, cover: sourceCoverUrl }
+    : {
+        ...input.candidate.bookMeta,
+        ...asRecord(await fetchBookInfo(input.auth.vid, input.auth.skey, input.candidate.bookId))
+      };
+  const cover = await cacheBookCover(input.candidate.bookId, coverSource);
+
+  return {
+    ...input.previous,
+    title: input.candidate.title,
+    author: input.previous.author ?? input.candidate.author,
+    status: input.candidate.status,
+    progress: input.candidate.progress,
+    finishTime: input.candidate.finishTime,
+    noteCount: input.candidate.noteCount,
+    reviewCount: input.candidate.reviewCount,
+    coverUrl: cover.coverUrl ?? input.previous.coverUrl ?? null,
+    coverPath: cover.coverPath ?? input.previous.coverPath ?? null,
+    coverCheckedAt: input.checkedAt
+  };
+}
+
+async function collectCandidates(options: SyncOptions, auth: SyncAuth): Promise<SyncCandidate[]> {
   const notebookEntries = await fetchNotebookList(auth.vid, auth.skey);
   const filteredEntries = options.bookId
     ? notebookEntries.filter((entry) => entry.book.bookId === options.bookId)
@@ -109,6 +166,8 @@ async function collectCandidates(options: SyncOptions): Promise<SyncCandidate[]>
         return {
           bookId: entry.book.bookId,
           title: entry.book.title,
+          author: entry.book.author,
+          bookMeta: asRecord(entry.book),
           noteCount: entry.noteCount,
           reviewCount: entry.reviewCount,
           sort: entry.sort,
@@ -130,7 +189,7 @@ export async function runSync(options: SyncOptions): Promise<LastSyncResult> {
   const outputDir = resolveOutputDir(options.outputDir);
   await ensureDir(outputDir);
 
-  const allCandidates = await collectCandidates(options);
+  const allCandidates = await collectCandidates(options, auth);
   const existingState = (await loadSyncState()) ?? {
     updatedAt: '',
     outputDir,
@@ -151,24 +210,51 @@ export async function runSync(options: SyncOptions): Promise<LastSyncResult> {
   for (const candidate of allCandidates) {
     const fingerprint = buildFingerprint(candidate);
     const previous = existingState.books[candidate.bookId];
-    if (!options.force && previous?.fingerprint === fingerprint) {
+    const hasDemoMetadata =
+      previous &&
+      typeof previous.noteCount === 'number' &&
+      typeof previous.reviewCount === 'number' &&
+      typeof previous.coverCheckedAt === 'string';
+    const hasCachedCover = await pathExists(previous?.coverPath);
+    const hasRemoteCoverHint = Boolean(extractBookCoverUrl(candidate.bookMeta) ?? previous?.coverUrl);
+    const coverIsResolved = hasCachedCover || (hasDemoMetadata && !hasRemoteCoverHint);
+
+    if (!options.force && previous?.fingerprint === fingerprint && hasDemoMetadata && coverIsResolved) {
       skippedBooks += 1;
       continue;
     }
 
-    const [bookInfo, progress, bookmarks, reviews, chapters] = await Promise.all([
+    if (!options.force && previous?.fingerprint === fingerprint && hasDemoMetadata && !coverIsResolved) {
+      nextState.books[candidate.bookId] = await cacheCoverForSkippedBook({
+        auth,
+        candidate,
+        previous,
+        checkedAt: nextState.updatedAt
+      });
+      skippedBooks += 1;
+      continue;
+    }
+
+    const [bookInfo, progress, bookmarks, reviews] = await Promise.all([
       fetchBookInfo(auth.vid, auth.skey, candidate.bookId),
       fetchBookProgress(auth.vid, auth.skey, candidate.bookId),
       fetchBookmarkList(auth.vid, auth.skey, candidate.bookId),
-      fetchReviewList(auth.vid, auth.skey, candidate.bookId),
-      fetchChapterInfos(auth.vid, auth.skey, candidate.bookId)
+      fetchReviewList(auth.vid, auth.skey, candidate.bookId)
     ]);
 
-    void chapters;
+    const bookInfoRecord = {
+      ...candidate.bookMeta,
+      ...asRecord(bookInfo)
+    };
+    const cover = await cacheBookCover(candidate.bookId, bookInfoRecord);
+    const enrichedBookInfo = {
+      ...bookInfoRecord,
+      coverUrl: cover.coverUrl ?? readString(bookInfoRecord.coverUrl) ?? readString(bookInfoRecord.cover)
+    };
 
     const markdown = renderBookMarkdown({
       syncedAt: nextState.updatedAt,
-      bookInfo: bookInfo as Record<string, unknown>,
+      bookInfo: enrichedBookInfo,
       progress: progress as Record<string, unknown>,
       bookmarks: bookmarks as Record<string, unknown>,
       reviews: reviews as Record<string, unknown>,
@@ -183,11 +269,17 @@ export async function runSync(options: SyncOptions): Promise<LastSyncResult> {
 
     nextState.books[candidate.bookId] = {
       title: candidate.title,
+      author: readString(bookInfoRecord.author) ?? candidate.author,
       fingerprint,
       exportFile: filePath,
       status: candidate.status,
       progress: candidate.progress,
       finishTime: candidate.finishTime,
+      noteCount: candidate.noteCount,
+      reviewCount: candidate.reviewCount,
+      coverUrl: cover.coverUrl,
+      coverPath: cover.coverPath,
+      coverCheckedAt: nextState.updatedAt,
       syncedAt: nextState.updatedAt
     };
 

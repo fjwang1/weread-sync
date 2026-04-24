@@ -23,7 +23,13 @@ export type NotebookEntry = {
   book: {
     bookId: string;
     title: string;
+    author?: string;
+    cover?: string;
+    coverUrl?: string;
+    bookCover?: string;
+    bookCoverUrl?: string;
     type: number;
+    [key: string]: unknown;
   };
   noteCount: number;
   reviewCount: number;
@@ -76,6 +82,14 @@ export async function requestWereadJson<T>(
     }
 
     if (!response.ok) {
+      if (response.status === 401) {
+        throw new CliError(
+          `登录已失效，请重新登录`,
+          'AUTH_EXPIRED',
+          json
+        );
+      }
+
       throw new CliError(
         `HTTP ${response.status} ${response.statusText} for ${path}`,
         'HTTP_ERROR',

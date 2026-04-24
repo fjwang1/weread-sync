@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
+import { createRequire } from 'node:module';
 import { runLoginStart } from './commands/loginStart.js';
 import { runLoginWait } from './commands/loginWait.js';
 import { runLoginInteractive } from './commands/loginInteractive.js';
@@ -11,9 +12,12 @@ import { runSyncCommand } from './commands/sync.js';
 import { runStatus } from './commands/status.js';
 import { runLogout } from './commands/logout.js';
 import { runExportDir } from './commands/exportDir.js';
+import { runDemo } from './commands/demo.js';
 import { handleFatalError } from './lib/output.js';
+const require = createRequire(import.meta.url);
+const packageJson = require('../package.json');
 const program = new Command();
-program.name('weread-sync').description('Independent CLI for WeRead sync').version('0.0.1');
+program.name('weread-sync').description('Independent CLI for WeRead sync').version(packageJson.version);
 const login = program
     .command('login')
     .description('Login to WeRead (show QR code and wait for scan)')
@@ -127,6 +131,23 @@ program
         includeStatuses: options.includeStatuses,
         outputDir: options.outputDir,
         force: options.force,
+        json: options.json
+    });
+});
+program
+    .command('demo')
+    .description('Start local demo web UI')
+    .option('--host <host>', 'Host to bind, default: 127.0.0.1')
+    .option('--port <port>', 'Port to bind, default: 5177')
+    .option('--output-dir <path>', 'Export directory')
+    .option('--open', 'Open the demo URL in the default browser')
+    .option('--json', 'Print JSON output')
+    .action(async (options) => {
+    await runDemo({
+        host: options.host,
+        port: options.port,
+        outputDir: options.outputDir,
+        open: options.open,
         json: options.json
     });
 });
